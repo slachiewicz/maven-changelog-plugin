@@ -41,7 +41,7 @@ under the License.
       <id>kaz</id>
       <name>Pete Kazmier</name>
       <email>pete-apache-dev@kazmier.com</email>
-      <organization />
+      <organization/>
       <roles>
         <role>Documentation</role>
         <role>Java Developer</role>
@@ -51,7 +51,7 @@ under the License.
       <id>epugh</id>
       <name>Eric Pugh</name>
       <email>epugh@opensourceconnections.com</email>
-      <organization />
+      <organization/>
       <roles>
         <role>Java Developer</role>
       </roles>
@@ -60,7 +60,7 @@ under the License.
       <id>evenisse</id>
       <name>Emmanuel Venisse</name>
       <email>emmanuel@venisse.net</email>
-      <organization />
+      <organization/>
       <roles>
         <role>Java Developer</role>
       </roles>
@@ -149,7 +149,7 @@ under the License.
     <surefire.version>2.21.0</surefire.version>
     <maven-scm.version>1.9.2</maven-scm.version>
     <doxiaVersion>1.1.4</doxiaVersion>
-    <mavenVersion>2.2.1</mavenVersion>
+    <mavenVersion>3.0</mavenVersion>
     <sitePluginVersion>3.3</sitePluginVersion><!-- used in ITs -->
     <project.build.outputTimestamp>2020-04-07T21:04:00Z</project.build.outputTimestamp>
   </properties>
