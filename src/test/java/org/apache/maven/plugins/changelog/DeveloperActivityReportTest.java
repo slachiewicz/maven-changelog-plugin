@@ -19,17 +19,16 @@
 package org.apache.maven.plugins.changelog;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
+import org.apache.maven.api.Project;
 import org.apache.maven.api.di.Provides;
 import org.apache.maven.api.plugin.testing.InjectMojo;
 import org.apache.maven.api.plugin.testing.MojoTest;
-import org.apache.maven.model.Developer;
+import org.apache.maven.api.services.Lookup;
 import org.apache.maven.plugins.changelog.stubs.MavenProjectStub;
-import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.FileUtils;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import static org.apache.maven.api.plugin.testing.MojoExtension.getBasedir;
 import static org.apache.maven.api.plugin.testing.MojoExtension.getVariableValueFromObject;
@@ -44,23 +43,16 @@ class DeveloperActivityReportTest extends AbstractChangeLogReportTest {
 
     @Provides
     @SuppressWarnings("unused")
-    private MavenProject providesMavenProject() {
-        MavenProject mavenProject = new MavenProjectStub();
+    private Lookup providesLookup() {
+        return Mockito.mock(Lookup.class);
+    }
 
-        List<Developer> developers = new ArrayList<>();
-
-        Developer developer = new Developer();
-        developer.setName("Edwin Punzalan");
-        developer.setId("edwin");
-        developers.add(developer);
-
-        developer = new Developer();
-        developer.setName("Keogh Edrich Punzalan");
-        developer.setId("keogh");
-        developers.add(developer);
-
-        mavenProject.setDevelopers(developers);
-        return mavenProject;
+    @Provides
+    @SuppressWarnings("unused")
+    private Project providesProject() {
+        return new MavenProjectStub()
+                .addDeveloper("edwin", "Edwin Punzalan")
+                .addDeveloper("keogh", "Keogh Edrich Punzalan");
     }
 
     @Test
@@ -68,7 +60,7 @@ class DeveloperActivityReportTest extends AbstractChangeLogReportTest {
     void testNoSource(DeveloperActivityReport mojo) throws Exception {
         executeReport(mojo);
 
-        File outputDir = getVariableValueFromObject(mojo, "outputDirectory");
+        File outputDir = (File) getVariableValueFromObject(mojo, "outputDirectory");
 
         File outputHtml = new File(outputDir, "dev-activity.html");
 
@@ -91,7 +83,7 @@ class DeveloperActivityReportTest extends AbstractChangeLogReportTest {
 
         executeReport(mojo);
 
-        String encoding = getVariableValueFromObject(mojo, "outputEncoding");
+        String encoding = (String) getVariableValueFromObject(mojo, "outputEncoding");
 
         assertTrue(outputXML.exists(), "Test if changelog.xml is created");
 
@@ -103,7 +95,7 @@ class DeveloperActivityReportTest extends AbstractChangeLogReportTest {
 
         assertTrue(changelogXml.endsWith("</changelog>"), "Test for xml footer");
 
-        File outputDir = getVariableValueFromObject(mojo, "outputDirectory");
+        File outputDir = (File) getVariableValueFromObject(mojo, "outputDirectory");
 
         File outputHtml = new File(outputDir, "dev-activity.html");
 

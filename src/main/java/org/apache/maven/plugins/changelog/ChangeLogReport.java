@@ -18,8 +18,6 @@
  */
 package org.apache.maven.plugins.changelog;
 
-import javax.inject.Inject;
-
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
@@ -49,11 +47,15 @@ import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.maven.api.Session;
+import org.apache.maven.api.di.Inject;
+import org.apache.maven.api.model.Developer;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.plugin.annotations.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
+import org.apache.maven.api.services.Lookup;
+import org.apache.maven.api.settings.Server;
 import org.apache.maven.doxia.sink.Sink;
-import org.apache.maven.model.Developer;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.changelog.scm.provider.svn.svnexe.command.info.SvnInfoCommandExpanded;
 import org.apache.maven.reporting.AbstractMavenReport;
 import org.apache.maven.reporting.MavenReportException;
@@ -74,8 +76,6 @@ import org.apache.maven.scm.provider.ScmProviderRepository;
 import org.apache.maven.scm.provider.ScmProviderRepositoryWithHost;
 import org.apache.maven.scm.provider.svn.repository.SvnScmProviderRepository;
 import org.apache.maven.scm.repository.ScmRepository;
-import org.apache.maven.settings.Server;
-import org.apache.maven.settings.Settings;
 
 /**
  * Generate a changelog report.
@@ -226,11 +226,6 @@ public class ChangeLogReport extends AbstractMavenReport {
     @Parameter(property = "encodeFileUri", defaultValue = "false")
     protected boolean encodeFileUri;
 
-    @Inject
-    public ChangeLogReport(ScmManager manager) {
-        this.manager = manager;
-    }
-
     /**
      * List of files to include. Specified as fileset patterns of files to include in the report
      *
@@ -253,14 +248,20 @@ public class ChangeLogReport extends AbstractMavenReport {
     private boolean offline;
 
     /**
-     * The SCM manager.
      */
     private ScmManager manager;
 
     /**
+     * The SCM manager is a Plexus component, which the Maven 4 dependency injection cannot bind,
+     * so it is looked up on first use.
      */
-    @Parameter(defaultValue = "${settings}", readonly = true, required = true)
-    private Settings settings;
+    @Inject
+    private Lookup lookup;
+
+    /**
+     */
+    @Inject
+    private Session session;
 
     /**
      * Allows the user to choose which scm connection to use when connecting to the scm.
@@ -370,7 +371,7 @@ public class ChangeLogReport extends AbstractMavenReport {
      *
      * @since 2.2
      */
-    @Parameter(property = "project.developers")
+    @Parameter
     protected List<Developer> developers;
 
     /**
@@ -399,6 +400,13 @@ public class ChangeLogReport extends AbstractMavenReport {
 
     private final Pattern sinkFileNamePattern = Pattern.compile("\\\\");
 
+    private ScmManager getManager() {
+        if (manager == null) {
+            manager = lookup.lookup(ScmManager.class);
+        }
+        return manager;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -416,7 +424,7 @@ public class ChangeLogReport extends AbstractMavenReport {
                 String providerImplementation = entry.getValue();
                 getLog().info("Change the default '" + providerType + "' provider implementation to '"
                         + providerImplementation + "'.");
-                manager.setScmProviderImplementation(providerType, providerImplementation);
+                getManager().setScmProviderImplementation(providerType, providerImplementation);
             }
         }
 
@@ -461,6 +469,10 @@ public class ChangeLogReport extends AbstractMavenReport {
         developersById = new HashMap<>();
         developersByName = new HashMap<>();
 
+        if (developers == null) {
+            developers = project.getModel().getDevelopers();
+        }
+
         if (developers != null) {
             for (Developer developer : developers) {
                 developersById.put(developer.getId(), developer);
@@ -480,7 +492,7 @@ public class ChangeLogReport extends AbstractMavenReport {
         List<ChangeLogSet> changelogList = null;
 
         if (!outputXML.isAbsolute()) {
-            outputXML = new File(project.getBasedir(), outputXML.getPath());
+            outputXML = new File(project.getBasedir().toFile(), outputXML.getPath());
         }
 
         if (outputXML.exists()) {
@@ -565,7 +577,7 @@ public class ChangeLogReport extends AbstractMavenReport {
 
             ScmRepository repository = getScmRepository();
 
-            ScmProvider provider = manager.getProviderByRepository(repository);
+            ScmProvider provider = getManager().getProviderByRepository(repository);
 
             ChangeLogScmResult result;
 
@@ -661,7 +673,7 @@ public class ChangeLogReport extends AbstractMavenReport {
 
         } catch (ScmException e) {
             throw new MavenReportException("Cannot run changelog command : ", e);
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             throw new MavenReportException("An error has occurred during changelog command : ", e);
         }
     }
@@ -783,7 +795,7 @@ public class ChangeLogReport extends AbstractMavenReport {
      *
      * @return A date
      */
-    private Date parseDate(String date) throws MojoExecutionException {
+    private Date parseDate(String date) throws MojoException {
         if (date == null || date.trim().isEmpty()) {
             return null;
         }
@@ -793,7 +805,7 @@ public class ChangeLogReport extends AbstractMavenReport {
         try {
             return formatter.parse(date);
         } catch (ParseException e) {
-            throw new MojoExecutionException("Please use this date pattern: " + formatter.toLocalizedPattern(), e);
+            throw new MojoException("Please use this date pattern: " + formatter.toLocalizedPattern(), e);
         }
     }
 
@@ -801,7 +813,7 @@ public class ChangeLogReport extends AbstractMavenReport {
         ScmRepository repository;
 
         try {
-            repository = manager.makeScmRepository(getConnection());
+            repository = getManager().makeScmRepository(getConnection());
 
             ScmProviderRepository providerRepo = repository.getProviderRepository();
 
@@ -863,29 +875,33 @@ public class ChangeLogReport extends AbstractMavenReport {
                 host += ":" + port;
             }
 
-            Server server = this.settings.getServer(host);
+            final String serverId = host;
+            Server server = session.getSettings().getServers().stream()
+                    .filter(it -> serverId.equals(it.getId()))
+                    .findFirst()
+                    .orElse(null);
 
             if (server != null) {
                 if (username == null) {
-                    username = this.settings.getServer(host).getUsername();
+                    username = server.getUsername();
                 }
 
                 if (password == null) {
-                    password = this.settings.getServer(host).getPassword();
+                    password = server.getPassword();
                 }
 
                 if (privateKey == null) {
-                    privateKey = this.settings.getServer(host).getPrivateKey();
+                    privateKey = server.getPrivateKey();
                 }
 
                 if (passphrase == null) {
-                    passphrase = this.settings.getServer(host).getPassphrase();
+                    passphrase = server.getPassphrase();
                 }
             }
         }
     }
 
-    public void checkResult(ScmResult result) throws MojoExecutionException {
+    public void checkResult(ScmResult result) throws MojoException {
         if (!result.isSuccess()) {
             getLog().error("Provider message:");
 
@@ -895,7 +911,7 @@ public class ChangeLogReport extends AbstractMavenReport {
 
             getLog().error(result.getCommandOutput() == null ? "" : result.getCommandOutput());
 
-            throw new MojoExecutionException("Command failed.");
+            throw new MojoException("Command failed.");
         }
     }
 
@@ -910,16 +926,16 @@ public class ChangeLogReport extends AbstractMavenReport {
             return connection;
         }
 
-        if (project.getScm() == null) {
+        if (project.getModel().getScm() == null) {
             throw new MavenReportException("SCM Connection is not set.");
         }
 
-        String scmConnection = project.getScm().getConnection();
+        String scmConnection = project.getModel().getScm().getConnection();
         if ((scmConnection != null && !scmConnection.isEmpty()) && "connection".equalsIgnoreCase(connectionType)) {
             connection = scmConnection;
         }
 
-        String scmDeveloper = project.getScm().getDeveloperConnection();
+        String scmDeveloper = project.getModel().getScm().getDeveloperConnection();
         if ((scmDeveloper != null && !scmDeveloper.isEmpty())
                 && "developerconnection".equalsIgnoreCase(connectionType)) {
             connection = scmDeveloper;
@@ -1564,7 +1580,7 @@ public class ChangeLogReport extends AbstractMavenReport {
      */
     protected String getOutputDirectory() {
         if (!outputDirectory.isAbsolute()) {
-            outputDirectory = new File(project.getBasedir(), outputDirectory.getPath());
+            outputDirectory = new File(project.getBasedir().toFile(), outputDirectory.getPath());
         }
 
         return outputDirectory.getAbsolutePath();

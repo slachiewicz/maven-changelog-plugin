@@ -18,21 +18,25 @@
  */
 package org.apache.maven.plugins.changelog.stubs;
 
-import java.io.File;
-import java.util.Collections;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.maven.api.model.Build;
+import org.apache.maven.api.model.Developer;
+import org.apache.maven.api.model.Model;
+import org.apache.maven.api.model.Scm;
 import org.apache.maven.api.plugin.testing.MojoExtension;
-import org.apache.maven.model.Build;
-import org.apache.maven.model.Scm;
-import org.apache.maven.project.MavenProject;
-import org.eclipse.aether.repository.RemoteRepository;
+import org.apache.maven.api.plugin.testing.stubs.ProjectStub;
 
 /**
  * @author Edwin Punzalan
  */
-public class MavenProjectStub extends MavenProject {
+public class MavenProjectStub extends ProjectStub {
     private static int testCounter = 0;
+
+    private final List<Developer> developers = new ArrayList<>();
 
     public MavenProjectStub() {
         super();
@@ -40,38 +44,24 @@ public class MavenProjectStub extends MavenProject {
         testCounter++;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public Scm getScm() {
-        Scm scm = new Scm();
-
-        scm.setConnection("scm://");
-        scm.setUrl("scm://");
-
-        return scm;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public File getBasedir() {
-        return new File(MojoExtension.getBasedir(), "target/test-harness/" + testCounter);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<RemoteRepository> getRemoteProjectRepositories() {
-        return Collections.singletonList(
-                new RemoteRepository.Builder("central", "default", "https://repo.maven.apache.org/maven2").build());
+    public MavenProjectStub addDeveloper(String id, String name) {
+        developers.add(Developer.newBuilder().id(id).name(name).build());
+        return this;
     }
 
     @Override
-    public Build getBuild() {
-        Build build = super.getBuild();
-        build.setDirectory(new File(getBasedir(), "target").getAbsolutePath());
-        return build;
+    public Model getModel() {
+        return Model.newBuilder(super.getModel())
+                .scm(Scm.newBuilder().connection("scm://").url("scm://").build())
+                .developers(developers)
+                .build(Build.newBuilder()
+                        .directory(getBasedir().resolve("target").toString())
+                        .build())
+                .build();
+    }
+
+    @Override
+    public Path getBasedir() {
+        return Paths.get(MojoExtension.getBasedir(), "target/test-harness/" + testCounter);
     }
 }

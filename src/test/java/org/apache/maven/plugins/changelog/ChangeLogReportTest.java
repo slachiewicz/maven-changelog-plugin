@@ -21,18 +21,20 @@ package org.apache.maven.plugins.changelog;
 import java.io.File;
 import java.nio.file.Files;
 
+import org.apache.maven.api.Project;
 import org.apache.maven.api.di.Provides;
+import org.apache.maven.api.plugin.MojoException;
 import org.apache.maven.api.plugin.testing.InjectMojo;
 import org.apache.maven.api.plugin.testing.MojoTest;
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.api.services.Lookup;
 import org.apache.maven.plugins.changelog.stubs.FailedScmManagerStub;
 import org.apache.maven.plugins.changelog.stubs.MavenProjectStub;
 import org.apache.maven.plugins.changelog.stubs.ScmManagerStub;
 import org.apache.maven.plugins.changelog.stubs.ScmManagerWithHostStub;
-import org.apache.maven.project.MavenProject;
 import org.apache.maven.scm.manager.ScmManager;
 import org.codehaus.plexus.util.FileUtils;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import static org.apache.maven.api.plugin.testing.MojoExtension.getBasedir;
 import static org.apache.maven.api.plugin.testing.MojoExtension.getVariableValueFromObject;
@@ -51,7 +53,13 @@ class ChangeLogReportTest extends AbstractChangeLogReportTest {
 
     @Provides
     @SuppressWarnings("unused")
-    private MavenProject providesMavenProject() {
+    private Lookup providesLookup() {
+        return Mockito.mock(Lookup.class);
+    }
+
+    @Provides
+    @SuppressWarnings("unused")
+    private Project providesProject() {
         return new MavenProjectStub();
     }
 
@@ -62,7 +70,7 @@ class ChangeLogReportTest extends AbstractChangeLogReportTest {
 
         executeReport(mojo);
 
-        File outputDir = getVariableValueFromObject(mojo, "outputDirectory");
+        File outputDir = (File) getVariableValueFromObject(mojo, "outputDirectory");
 
         File outputHtml = new File(outputDir, "changelog.html");
 
@@ -84,7 +92,7 @@ class ChangeLogReportTest extends AbstractChangeLogReportTest {
 
         try {
             executeMojo(mojo);
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             assertEquals("Command failed.", e.getCause().getCause().getMessage(), "Test thrown exception");
         }
     }
@@ -107,7 +115,7 @@ class ChangeLogReportTest extends AbstractChangeLogReportTest {
             executeMojo(mojo);
 
             fail("Test exception on invalid type");
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             assertTrue(
                     e.getCause().getMessage().startsWith("The type parameter has an invalid value: invalid."),
                     "Test thrown exception");
@@ -131,7 +139,7 @@ class ChangeLogReportTest extends AbstractChangeLogReportTest {
     void testDateException(ChangeLogReport mojo) throws Exception {
         try {
             executeMojo(mojo);
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             assertTrue(
                     e.getCause().getCause().getMessage().startsWith("Please use this date pattern: "),
                     "Test thrown exception");
@@ -169,7 +177,7 @@ class ChangeLogReportTest extends AbstractChangeLogReportTest {
     void testNoScmConnection(ChangeLogReport mojo) throws Exception {
         try {
             executeMojo(mojo);
-        } catch (MojoExecutionException e) {
+        } catch (MojoException e) {
             assertEquals(
                     "SCM Connection is not set.",
                     e.getCause().getCause().getCause().getMessage(),
@@ -227,9 +235,9 @@ class ChangeLogReportTest extends AbstractChangeLogReportTest {
 
         executeReport(mojo);
 
-        File outputXML = getVariableValueFromObject(mojo, "outputXML");
+        File outputXML = (File) getVariableValueFromObject(mojo, "outputXML");
 
-        String encoding = getVariableValueFromObject(mojo, "outputEncoding");
+        String encoding = (String) getVariableValueFromObject(mojo, "outputEncoding");
 
         assertTrue(outputXML.exists(), "Test if changelog.xml is created");
 
@@ -241,7 +249,7 @@ class ChangeLogReportTest extends AbstractChangeLogReportTest {
 
         assertTrue(changelogXml.endsWith("</changelog>"), "Test for xml footer");
 
-        File outputDir = getVariableValueFromObject(mojo, "outputDirectory");
+        File outputDir = (File) getVariableValueFromObject(mojo, "outputDirectory");
 
         File outputHtml = new File(outputDir, "changelog.html");
 

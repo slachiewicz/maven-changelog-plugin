@@ -18,54 +18,17 @@
  */
 package org.apache.maven.plugins.changelog;
 
-import javax.inject.Inject;
-
 import java.io.File;
 
-import org.apache.maven.artifact.repository.ArtifactRepository;
-import org.apache.maven.execution.DefaultMavenExecutionRequest;
-import org.apache.maven.execution.MavenExecutionRequest;
-import org.apache.maven.execution.MavenSession;
-import org.apache.maven.internal.aether.DefaultRepositorySystemSessionFactory;
-import org.apache.maven.model.Plugin;
-import org.apache.maven.plugin.MojoExecution;
 import org.apache.maven.reporting.AbstractMavenReport;
-import org.eclipse.aether.DefaultRepositorySystemSession;
-import org.junit.jupiter.api.BeforeEach;
-import org.mockito.Mockito;
 
 import static org.apache.maven.api.plugin.testing.MojoExtension.getBasedir;
 import static org.apache.maven.api.plugin.testing.MojoExtension.setVariableValueToObject;
 
 /**
- * Common test setup for the report mojos: since maven-reporting-impl 4.x, a standalone report execution
- * renders a full site page, which requires a usable repository session to resolve the site skin.
+ * Common test setup for the report mojos.
  */
 abstract class AbstractChangeLogReportTest {
-
-    @Inject
-    private MavenSession mavenSession;
-
-    @Inject
-    private DefaultRepositorySystemSessionFactory repoSessionFactory;
-
-    @Inject
-    private MojoExecution mojoExecution;
-
-    @BeforeEach
-    void setUpRepositorySession() {
-        // prepare realistic repository session
-        ArtifactRepository localRepo = Mockito.mock(ArtifactRepository.class);
-        Mockito.when(localRepo.getBasedir()).thenReturn(new File(getBasedir(), "target/local-repo").getAbsolutePath());
-
-        MavenExecutionRequest request = new DefaultMavenExecutionRequest();
-        request.setLocalRepository(localRepo);
-
-        DefaultRepositorySystemSession systemSession = repoSessionFactory.newRepositorySession(request);
-        Mockito.when(mavenSession.getRepositorySession()).thenReturn(systemSession);
-
-        Mockito.when(mojoExecution.getPlugin()).thenReturn(new Plugin());
-    }
 
     /**
      * Executes a report mojo as a standalone goal.
