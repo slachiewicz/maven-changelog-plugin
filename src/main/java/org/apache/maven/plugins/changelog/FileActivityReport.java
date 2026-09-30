@@ -28,8 +28,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 
+import org.apache.maven.api.plugin.annotations.Mojo;
 import org.apache.maven.doxia.sink.Sink;
-import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.scm.ChangeFile;
 import org.apache.maven.scm.ChangeSet;
 import org.apache.maven.scm.command.changelog.ChangeLogSet;

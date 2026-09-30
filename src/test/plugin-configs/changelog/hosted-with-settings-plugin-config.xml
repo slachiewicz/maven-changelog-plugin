@@ -31,7 +31,6 @@ under the License.
           <scmUrl>scm://</scmUrl>
           <outputDirectory>site</outputDirectory>
           <offline>false</offline>
-          <settings implementation="org.apache.maven.plugins.changelog.stubs.SettingsStub"/>
         </configuration>
       </plugin>
     </plugins>

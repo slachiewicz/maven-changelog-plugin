@@ -18,37 +18,28 @@
  */
 package org.apache.maven.plugins.changelog.stubs;
 
-import org.apache.maven.settings.Server;
-import org.apache.maven.settings.Settings;
+import org.apache.maven.api.settings.Server;
+import org.apache.maven.api.settings.Settings;
 
 /**
  * @author Edwin Punzalan
  */
-public class SettingsStub extends Settings {
+public final class SettingsStub {
+    private SettingsStub() {}
+
     /**
-     * {@inheritDoc}
+     * @param serverId the server the credentials are registered for
+     * @return settings holding one server with fixed credentials
      */
-    public Server getServer(String serverId) {
-        return new Server() {
-            /** {@inheritDoc} */
-            public String getUsername() {
-                return "anonymous";
-            }
-
-            /** {@inheritDoc} */
-            public String getPassword() {
-                return "password";
-            }
-
-            /** {@inheritDoc} */
-            public String getPassphrase() {
-                return "passphrase";
-            }
-
-            /** {@inheritDoc} */
-            public String getPrivateKey() {
-                return "private-key";
-            }
-        };
+    public static Settings withServer(String serverId) {
+        return Settings.newBuilder()
+                .servers(java.util.Collections.singletonList(Server.newBuilder()
+                        .id(serverId)
+                        .username("anonymous")
+                        .password("password")
+                        .passphrase("passphrase")
+                        .privateKey("private-key")
+                        .build()))
+                .build();
     }
 }

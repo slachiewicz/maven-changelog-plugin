@@ -20,13 +20,15 @@ package org.apache.maven.plugins.changelog;
 
 import java.io.File;
 
+import org.apache.maven.api.Project;
 import org.apache.maven.api.di.Provides;
 import org.apache.maven.api.plugin.testing.InjectMojo;
 import org.apache.maven.api.plugin.testing.MojoTest;
+import org.apache.maven.api.services.Lookup;
 import org.apache.maven.plugins.changelog.stubs.MavenProjectStub;
-import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.FileUtils;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import static org.apache.maven.api.plugin.testing.MojoExtension.getBasedir;
 import static org.apache.maven.api.plugin.testing.MojoExtension.getVariableValueFromObject;
@@ -41,7 +43,13 @@ class FileActivityReportTest extends AbstractChangeLogReportTest {
 
     @Provides
     @SuppressWarnings("unused")
-    private MavenProject providesMavenProject() {
+    private Lookup providesLookup() {
+        return Mockito.mock(Lookup.class);
+    }
+
+    @Provides
+    @SuppressWarnings("unused")
+    private Project providesProject() {
         return new MavenProjectStub();
     }
 
@@ -51,7 +59,7 @@ class FileActivityReportTest extends AbstractChangeLogReportTest {
 
         executeReport(mojo);
 
-        File outputDir = getVariableValueFromObject(mojo, "outputDirectory");
+        File outputDir = (File) getVariableValueFromObject(mojo, "outputDirectory");
 
         File outputHtml = new File(outputDir, "file-activity.html");
 
@@ -74,7 +82,7 @@ class FileActivityReportTest extends AbstractChangeLogReportTest {
 
         executeReport(mojo);
 
-        String encoding = getVariableValueFromObject(mojo, "outputEncoding");
+        String encoding = (String) getVariableValueFromObject(mojo, "outputEncoding");
 
         assertTrue(outputXML.exists(), "Test if changelog.xml is created");
 
@@ -86,7 +94,7 @@ class FileActivityReportTest extends AbstractChangeLogReportTest {
 
         assertTrue(changelogXml.endsWith("</changelog>"), "Test for xml footer");
 
-        File outputDir = getVariableValueFromObject(mojo, "outputDirectory");
+        File outputDir = (File) getVariableValueFromObject(mojo, "outputDirectory");
 
         File outputHtml = new File(outputDir, "file-activity.html");
 
