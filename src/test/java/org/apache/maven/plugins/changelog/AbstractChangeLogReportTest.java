@@ -19,11 +19,15 @@
 package org.apache.maven.plugins.changelog;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.Locale;
 
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.doxia.module.xhtml5.Xhtml5SinkFactory;
+import org.apache.maven.doxia.sink.Sink;
+import org.apache.maven.doxia.sink.SinkFactory;
 import org.apache.maven.reporting.AbstractMavenReport;
-
-import static org.apache.maven.api.plugin.testing.MojoExtension.getBasedir;
-import static org.apache.maven.api.plugin.testing.MojoExtension.setVariableValueToObject;
+import org.apache.maven.reporting.MavenReportException;
 
 /**
  * Common test setup for the report mojos.
@@ -31,15 +35,32 @@ import static org.apache.maven.api.plugin.testing.MojoExtension.setVariableValue
 abstract class AbstractChangeLogReportTest {
 
     /**
-     * Executes a report mojo as a standalone goal.
+     * Executes a report mojo and writes the report as plain XHTML5 to
+     * <code>&lt;outputDirectory&gt;/&lt;outputName&gt;.html</code>.
      * <p>
-     * The site descriptor of this very plugin (<code>src/site/site.xml</code>, the default value of the
-     * <code>siteDirectory</code> parameter within the test harness) defines no skin, so the mojo is pointed at an
-     * empty directory to have the default site descriptor - and hence a resolvable skin - used instead.
+     * {@link AbstractMavenReport#execute()} renders a standalone report through the Doxia site renderer, which needs
+     * Maven 3 objects that the Maven 4 test harness cannot provide. The report content does not depend on that
+     * rendering, so this helper calls {@link AbstractMavenReport#generate(Sink, SinkFactory, Locale)} directly and
+     * wraps a {@link MavenReportException} the way <code>execute()</code> does.
      */
     protected void executeReport(AbstractMavenReport mojo) throws Exception {
-        setVariableValueToObject(mojo, "siteDirectory", new File(getBasedir(), "target/test-harness/site"));
+        try {
+            if (!mojo.canGenerateReport()) {
+                return;
+            }
+        } catch (MavenReportException e) {
+            throw new MojoException("Failed to determine whether report can be generated", e);
+        }
 
-        mojo.execute();
+        File outputDirectory = mojo.getReportOutputDirectory();
+        SinkFactory sinkFactory = new Xhtml5SinkFactory();
+        try (Sink sink = sinkFactory.createSink(outputDirectory, mojo.getOutputName() + ".html")) {
+            mojo.generate(sink, sinkFactory, Locale.ENGLISH);
+        } catch (MavenReportException e) {
+            throw new MojoException(
+                    "An error has occurred in " + mojo.getName(Locale.ENGLISH) + " report generation.", e);
+        } catch (IOException e) {
+            throw new MojoException("Cannot create the report sink in " + outputDirectory, e);
+        }
     }
 }

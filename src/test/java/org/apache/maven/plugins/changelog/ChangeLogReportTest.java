@@ -22,6 +22,7 @@ import java.io.File;
 import java.nio.file.Files;
 
 import org.apache.maven.api.Project;
+import org.apache.maven.api.Session;
 import org.apache.maven.api.di.Provides;
 import org.apache.maven.api.plugin.MojoException;
 import org.apache.maven.api.plugin.testing.InjectMojo;
@@ -31,6 +32,7 @@ import org.apache.maven.plugins.changelog.stubs.FailedScmManagerStub;
 import org.apache.maven.plugins.changelog.stubs.MavenProjectStub;
 import org.apache.maven.plugins.changelog.stubs.ScmManagerStub;
 import org.apache.maven.plugins.changelog.stubs.ScmManagerWithHostStub;
+import org.apache.maven.plugins.changelog.stubs.SettingsStub;
 import org.apache.maven.scm.manager.ScmManager;
 import org.codehaus.plexus.util.FileUtils;
 import org.junit.jupiter.api.Test;
@@ -67,6 +69,9 @@ class ChangeLogReportTest extends AbstractChangeLogReportTest {
     @InjectMojo(goal = "changelog", pom = "src/test/plugin-configs/changelog/no-source-plugin-config.xml")
     void testNoSource(ChangeLogReport mojo) throws Exception {
         setVariableValueToObject(mojo, "manager", scmManager);
+
+        // the test harness does not resolve the ${basedir} default of this parameter
+        setVariableValueToObject(mojo, "basedir", new File(getBasedir(), "target/no-such-source-directory"));
 
         executeReport(mojo);
 
@@ -169,6 +174,10 @@ class ChangeLogReportTest extends AbstractChangeLogReportTest {
     @InjectMojo(goal = "changelog", pom = "src/test/plugin-configs/changelog/hosted-with-settings-plugin-config.xml")
     void testScmRepositoryWithHostFromSettings(ChangeLogReport mojo) throws Exception {
         scmManager = new ScmManagerWithHostStub();
+
+        // the mocked session of the test harness has no settings, so hand it the server the stub host maps to
+        Session session = (Session) getVariableValueFromObject(mojo, "session");
+        Mockito.when(session.getSettings()).thenReturn(SettingsStub.withServer("scmHost"));
         executeMojo(mojo);
     }
 
